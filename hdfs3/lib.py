@@ -4,7 +4,7 @@ Low-level interface to libhdfs3
 """
 from __future__ import absolute_import
 
-import sys
+import sys, os
 import ctypes as ct
 from .utils import ensure_string
 
@@ -20,6 +20,25 @@ for name in ['libhdfs3.so', 'libhdfs3.dylib']:
         if not e.args or ("image not found" not in str(e.args[0]) and
                           "No such file" not in str(e)):
             raise
+    
+    # Try other locations where the file may be stored
+    if _lib is None:
+        
+        # Desperately try imports from the PATH
+        ipath = None
+        for ip in os.environ.get('PATH', '').split(':'):
+            ifp = os.path.join(ip, name)
+            if os.path.exists(ifp):
+                ipath = ifp
+
+        if ipath:    
+            try: 
+                _lib = ct.cdll.LoadLibrary(os.path.join(ipath))
+                break
+            except OSError as e:
+                if not e.args or ('image not found' not in str(e.args[0]) and 'No such file' not in str(e)):
+                    raise
+
 if _lib is None:
     raise ImportError("Can not find the shared library: libhdfs3.so\n"
                       "See installation instructions at "
